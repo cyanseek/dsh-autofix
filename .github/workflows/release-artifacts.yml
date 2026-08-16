@@ -1,0 +1,31 @@
+name: release-artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm pack
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dsh-autofix-package
+          path: '*.tgz'
+          if-no-files-found: error
+          retention-days: 30
+
+# This workflow intentionally does not publish to npm or create a GitHub
+# release. Publishing remains an explicit maintainer action.

@@ -1,0 +1,104 @@
+{
+  "name": "dsh-autofix",
+  "version": "0.1.0",
+  "description": "Automatic recovery for common DeepSeek Harness tool errors — zero prompts, zero config.",
+  "author": "cyanseek",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cyanseek/dsh-autofix.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cyanseek/dsh-autofix/issues"
+  },
+  "homepage": "https://github.com/cyanseek/dsh-autofix#readme",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "dsh-autofix": "./bin/dsh-autofix.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./recipes": {
+      "types": "./lib/recipes/index.d.ts",
+      "default": "./lib/recipes/index.js"
+    },
+    "./testkit": {
+      "types": "./lib/testkit/index.d.ts",
+      "default": "./lib/testkit/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin/dsh-autofix.mjs",
+    "lib",
+    "cordis.patch.yml",
+    "skills/dsh-autofix",
+    "recipes/catalog.json",
+    "docs",
+    "README.md",
+    "README.zh-CN.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.zh-CN.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "autofix",
+    "automatic-recovery",
+    "tool-retry",
+    "agent-productivity",
+    "developer-experience",
+    "cross-platform",
+    "tool-calling",
+    "agent-skill"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "verify": "node bin/dsh-autofix.mjs verify --json",
+    "benchmark": "npm run build && node benchmarks/success-fast-path.mjs",
+    "validate:skill": "node scripts/validate-skill.mjs",
+    "check": "npm run typecheck && npm test && npm run validate:skill && npm run verify && npm pack --dry-run",
+    "prepack": "npm run build && npm run validate:skill && npm run verify"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.1-rc.1 <5",
+    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.5 <0.2.0",
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.5 <0.2.0",
+    "@deepseek-ai/schemastery": ">=3.18.0 <4"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.8.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

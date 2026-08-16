@@ -1,0 +1,252 @@
+import { createHash } from 'node:crypto'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, extname, join, resolve } from 'node:path'
+import process from 'node:process'
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
+import { pathToFileURL } from 'node:url'
+import { discoverProfiles, resolveDshCommand, resolveDshHome, type DshCommand } from './discover.js'
+
+export interface ProfileStatus {
+  readonly profile: 'web' | 'headless'
+  readonly installed: boolean
+  readonly verified: boolean
+  readonly changed: boolean
+}
+
+export interface InstallReport {
+  readonly tool: 'dsh-autofix'
+  readonly version: string
+  readonly dshSource: DshCommand['source']
+  readonly dshHome: string
+  readonly source: string
+  readonly profiles: readonly ProfileStatus[]
+  readonly skillDestinations: readonly string[]
+  readonly packageLoad: boolean
+  readonly changed: boolean
+  readonly safeToRetry: boolean
+}
+
+export interface VerifyReport {
+  readonly tool: 'dsh-autofix'
+  readonly version: string
+  readonly node: { readonly version: string; readonly supported: boolean }
+  readonly artifacts: Readonly<Record<string, boolean>>
+  readonly packageLoad: boolean
+  readonly dsh?: { readonly source: string; readonly home: string; readonly profiles: readonly ProfileStatus[] }
+  readonly publishReady: boolean
+}
+
+export interface OperationOptions {
+  readonly packageRoot: string
+  readonly version: string
+  readonly env?: NodeJS.ProcessEnv
+}
+
+function spawn(command: DshCommand, args: readonly string[], env: NodeJS.ProcessEnv): SpawnSyncReturns<string> {
+  const extension = extname(command.command).toLowerCase()
+  const nodeScript = ['.js', '.mjs', '.cjs'].includes(extension)
+  if (process.platform === 'win32' && !nodeScript) {
+    const values = [command.command, ...command.prefix, ...args]
+    for (const value of values) {
+      if (/[\r\n"%]/u.test(value)) {
+        throw new Error('the Windows dsh command and its arguments cannot contain quotes, percent signs, or newlines')
+      }
+    }
+    const commandLine = values.map(value => `"${value}"`).join(' ')
+    return spawnSync(env.ComSpec || 'cmd.exe', ['/d', '/v:off', '/s', '/c', `"${commandLine}"`], {
+      encoding: 'utf8',
+      timeout: 120_000,
+      maxBuffer: 16 * 1024 * 1024,
+      env,
+      windowsVerbatimArguments: true,
+    })
+  }
+  return spawnSync(
+    nodeScript ? process.execPath : command.command,
+    nodeScript ? [command.command, ...command.prefix, ...args] : [...command.prefix, ...args],
+    {
+      encoding: 'utf8',
+      timeout: 120_000,
+      maxBuffer: 16 * 1024 * 1024,
+      env,
+    },
+  )
+}
+
+function runDsh(command: DshCommand, args: readonly string[], env: NodeJS.ProcessEnv): string {
+  const result = spawn(command, args, env)
+  if (result.error !== undefined) throw result.error
+  if (result.status !== 0) {
+    const detail = `${result.stderr ?? ''}\n${result.stdout ?? ''}`.trim().slice(0, 2_000)
+    throw new Error(`dsh ${args.join(' ')} failed (${result.status ?? 1})${detail ? `: ${detail}` : ''}`)
+  }
+  return `${result.stdout ?? ''}\n${result.stderr ?? ''}`
+}
+
+function configHasAutoFix(text: string): boolean {
+  const start = /(?:^|\n)([ \t]*)-\s*id:\s*autofix\s*(?:\r?\n|$)/m.exec(text)
+  if (start === null) return false
+  const rowStart = start.index + (text[start.index] === '\n' ? 1 : 0)
+  const tail = text.slice(rowStart + start[0].trimStart().length)
+  const nextRow = /(?:^|\n)[ \t]*-\s*id:\s*/m.exec(tail)
+  const row = text.slice(rowStart, nextRow === null ? text.length : rowStart + start[0].trimStart().length + nextRow.index)
+  return /(?:^|\n)[ \t]+name:\s*dsh-autofix\s*(?:\r?\n|$)/m.test(row)
+    && !/(?:^|\n)[ \t]+disabled:\s*true\s*(?:\r?\n|$)/m.test(row)
+}
+
+function profileStatus(
+  command: DshCommand,
+  profile: 'web' | 'headless',
+  env: NodeJS.ProcessEnv,
+): ProfileStatus {
+  const dump = runDsh(command, ['--profile', profile, '--dump-config'], env)
+  const verified = configHasAutoFix(dump)
+  return { profile, installed: verified, verified, changed: false }
+}
+
+function packageLoadSmoke(packageRoot: string): boolean {
+  const target = resolve(packageRoot, 'lib/index.js')
+  if (!existsSync(target)) return false
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '--eval',
+    `await import(${JSON.stringify(pathToFileURL(target).href)})`,
+  ], { encoding: 'utf8', timeout: 10_000 })
+  return result.status === 0
+}
+
+function digest(path: string): string | undefined {
+  if (!existsSync(path)) return undefined
+  return createHash('sha256').update(readFileSync(path)).digest('hex')
+}
+
+function installSkill(packageRoot: string, destination: string): boolean {
+  const source = resolve(packageRoot, 'skills/dsh-autofix')
+  const sourceSkill = resolve(source, 'SKILL.md')
+  if (!existsSync(sourceSkill)) throw new Error('bundled dsh-autofix Skill is missing')
+  const destinationSkill = resolve(destination, 'SKILL.md')
+  if (digest(sourceSkill) === digest(destinationSkill)) return false
+  mkdirSync(dirname(destination), { recursive: true })
+  cpSync(source, destination, { recursive: true, force: true })
+  return true
+}
+
+function skillDestinations(dshHome: string, env: NodeJS.ProcessEnv): readonly string[] {
+  const agentsHome = resolve(env.DSH_AGENTS_HOME?.trim() || join(homedir(), '.agents'))
+  const candidates = [
+    resolve(dshHome, 'skills/dsh-autofix'),
+    resolve(agentsHome, 'skills/dsh-autofix'),
+  ]
+  return [...new Set(candidates)]
+}
+
+export function install(options: OperationOptions): InstallReport {
+  const env = { ...process.env, ...options.env }
+  const command = resolveDshCommand(env)
+  const dshHome = resolveDshHome(env)
+  const profiles = discoverProfiles(dshHome)
+  if (profiles.length === 0) {
+    throw new Error('no existing web or headless profile was found; start the DSH client once, then retry this command')
+  }
+  const source = env.DSH_AUTOFIX_SOURCE?.trim() || `dsh-autofix@${options.version}`
+  const statuses: ProfileStatus[] = []
+  for (const profile of profiles) {
+    const before = profileStatus(command, profile, env)
+    if (before.installed) {
+      statuses.push(before)
+      continue
+    }
+    runDsh(command, ['plugin', '--profile', profile, 'add', source], env)
+    const after = profileStatus(command, profile, env)
+    if (!after.verified) throw new Error(`dsh-autofix was added to ${profile}, but its effective config could not be verified`)
+    statuses.push({ ...after, changed: true })
+  }
+
+  const destinations = skillDestinations(dshHome, env)
+  const skillChanged = destinations.map(destination => installSkill(options.packageRoot, destination))
+  const load = packageLoadSmoke(options.packageRoot)
+  if (!load) throw new Error('the prebuilt dsh-autofix runtime failed its package load smoke test')
+  return {
+    tool: 'dsh-autofix',
+    version: options.version,
+    dshSource: command.source,
+    dshHome,
+    source,
+    profiles: statuses,
+    skillDestinations: destinations,
+    packageLoad: load,
+    changed: statuses.some(item => item.changed) || skillChanged.some(Boolean),
+    safeToRetry: true,
+  }
+}
+
+export function uninstall(options: OperationOptions): InstallReport {
+  const env = { ...process.env, ...options.env }
+  const command = resolveDshCommand(env)
+  const dshHome = resolveDshHome(env)
+  const profiles = discoverProfiles(dshHome)
+  const statuses: ProfileStatus[] = []
+  for (const profile of profiles) {
+    const before = profileStatus(command, profile, env)
+    if (!before.installed) {
+      statuses.push(before)
+      continue
+    }
+    runDsh(command, ['plugin', '--profile', profile, 'remove', 'dsh-autofix'], env)
+    const after = profileStatus(command, profile, env)
+    if (after.installed) throw new Error(`dsh-autofix remains active in ${profile} after removal`)
+    statuses.push({ ...after, changed: true })
+  }
+  const destinations = skillDestinations(dshHome, env)
+  const removedSkills = destinations.map(destination => {
+    const existed = existsSync(destination)
+    rmSync(destination, { recursive: true, force: true })
+    return existed
+  })
+  return {
+    tool: 'dsh-autofix', version: options.version, dshSource: command.source, dshHome,
+    source: 'dsh-autofix', profiles: statuses, skillDestinations: destinations,
+    packageLoad: packageLoadSmoke(options.packageRoot),
+    changed: statuses.some(item => item.changed) || removedSkills.some(Boolean),
+    safeToRetry: true,
+  }
+}
+
+function nodeSupported(): boolean {
+  const [major = 0, minor = 0] = process.versions.node.split('.').map(Number)
+  return major >= 24 || (major === 22 && minor >= 19)
+}
+
+export function verify(options: OperationOptions): VerifyReport {
+  const env = { ...process.env, ...options.env }
+  const artifacts = {
+    runtime: existsSync(resolve(options.packageRoot, 'lib/index.js')),
+    recipes: existsSync(resolve(options.packageRoot, 'lib/recipes/index.js')),
+    testkit: existsSync(resolve(options.packageRoot, 'lib/testkit/index.js')),
+    cli: existsSync(resolve(options.packageRoot, 'bin/dsh-autofix.mjs')),
+    bundle: existsSync(resolve(options.packageRoot, 'cordis.patch.yml')),
+    skill: existsSync(resolve(options.packageRoot, 'skills/dsh-autofix/SKILL.md')),
+    catalog: existsSync(resolve(options.packageRoot, 'recipes/catalog.json')),
+    readmeEnglish: existsSync(resolve(options.packageRoot, 'README.md')),
+    readmeChinese: existsSync(resolve(options.packageRoot, 'README.zh-CN.md')),
+    license: existsSync(resolve(options.packageRoot, 'LICENSE')),
+  }
+  const load = packageLoadSmoke(options.packageRoot)
+  let dsh: VerifyReport['dsh']
+  try {
+    const command = resolveDshCommand(env)
+    const home = resolveDshHome(env)
+    const profiles = discoverProfiles(home).map(profile => profileStatus(command, profile, env))
+    dsh = { source: command.source, home, profiles }
+  } catch {
+    dsh = undefined
+  }
+  return {
+    tool: 'dsh-autofix', version: options.version,
+    node: { version: process.versions.node, supported: nodeSupported() },
+    artifacts, packageLoad: load,
+    ...(dsh === undefined ? {} : { dsh }),
+    publishReady: nodeSupported() && load && Object.values(artifacts).every(Boolean),
+  }
+}

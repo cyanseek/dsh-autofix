@@ -1,0 +1,38 @@
+name: Compatibility report
+description: Report a verified DSH, Node.js and OS combination.
+title: "compat: DSH <version> on <platform>"
+labels: [compatibility]
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Exact dsh-autofix, DSH, Node.js and package-manager versions
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Install source
+      options: [npm package, packed tarball, prebuilt release artifact]
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted verification evidence
+      description: Include install/verify output and the recipes actually exercised.
+    validations:
+      required: true
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Verdict
+      options: [PASS, FAIL, INCONCLUSIVE]
+    validations:
+      required: true

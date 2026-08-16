@@ -1,0 +1,1 @@
+{"version":3,"file":"events.d.ts","sourceRoot":"","sources":["../../src/testkit/events.ts"],"names":[],"mappings":"AAAA,yEAAyE;AAEzE,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,WAAW,CAAA;AAEnD,OAAO,QAAQ,qBAAqB,CAAC;IACnC,UAAU,MAAM;QACd,yDAAyD;QACzD,qBAAqB,CAAC,QAAQ,EAAE,kBAAkB,GAAG,IAAI,CAAA;KAC1D;CACF;AAED,OAAO,EAAE,CAAA"}

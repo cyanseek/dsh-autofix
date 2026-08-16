@@ -1,0 +1,23 @@
+name: Feature proposal
+description: Propose a user-facing improvement that is not an error Recipe.
+title: "proposal: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: interruption
+    attributes:
+      label: User interruption to remove
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Smallest useful outcome
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Existing alternatives and compatibility impact
+    validations:
+      required: true

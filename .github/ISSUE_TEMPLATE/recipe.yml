@@ -1,0 +1,63 @@
+name: Recovery Recipe request
+description: Turn a reproducible DSH failure into a small automatic recovery.
+title: "recipe: "
+labels: [recipe]
+body:
+  - type: markdown
+    attributes:
+      value: Remove credentials, private paths and session content. Unknown or incomplete evidence is welcome, but must be labeled as such.
+  - type: textarea
+    id: error
+    attributes:
+      label: Complete redacted error
+      description: Include structured code/status fields when available.
+    validations:
+      required: true
+  - type: input
+    id: dsh
+    attributes:
+      label: Exact DSH version
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS, architecture and Node.js version
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool name
+    validations:
+      required: true
+  - type: textarea
+    id: manual
+    attributes:
+      label: Current manual recovery
+      description: What do you or the agent do today to continue the task?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected automatic action
+      description: Describe one bounded next action, not a general-purpose repair system.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Prefer synthetic data and an isolated profile.
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundaries
+      options:
+        - label: I removed secrets and private session data.
+          required: true
+        - label: The proposed action does not require bypassing approval or sandbox policy.
+          required: true

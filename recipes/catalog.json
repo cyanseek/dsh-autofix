@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "recipes": [
+    {
+      "id": "transient-tool-error",
+      "summary": "Retry a recognized transient tool failure once through the agent loop.",
+      "examples": ["RATE_LIMIT", "HTTP 502", "ECONNRESET", "ETIMEDOUT"]
+    },
+    {
+      "id": "stale-file-context",
+      "summary": "Refresh a bounded current file excerpt before an exact edit is retried.",
+      "examples": ["old text not found", "file changed since last read", "edit conflict"]
+    },
+    {
+      "id": "command-alternative",
+      "summary": "Recommend an equivalent command only when it exists on the current PATH.",
+      "examples": ["python → python3", "rg → grep", "pwsh → powershell"]
+    },
+    {
+      "id": "dsh-error-atlas",
+      "summary": "Attach a versioned next action for a controlled set of common DSH errors.",
+      "examples": ["prepare undefined", "history unavailable", "missing build artifact"]
+    }
+  ]
+}

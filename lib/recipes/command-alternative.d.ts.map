@@ -1,0 +1,1 @@
+{"version":3,"file":"command-alternative.d.ts","sourceRoot":"","sources":["../../src/recipes/command-alternative.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,aAAa,EAAiB,aAAa,EAAE,MAAM,oBAAoB,CAAA;AAerF,UAAU,YAAa,SAAQ,aAAa;IAC1C,QAAQ,CAAC,OAAO,EAAE,MAAM,CAAA;CACzB;AAsBD,eAAO,MAAM,wBAAwB,EAAE,aAAa,CAAC,YAAY,CA2BhE,CAAA"}

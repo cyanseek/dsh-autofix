@@ -1,0 +1,1 @@
+{"version":3,"file":"stale-file.d.ts","sourceRoot":"","sources":["../../src/recipes/stale-file.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,aAAa,EAAiB,aAAa,EAAE,MAAM,oBAAoB,CAAA;AAOrF,UAAU,UAAW,SAAQ,aAAa;IACxC,QAAQ,CAAC,IAAI,CAAC,EAAE,MAAM,CAAA;IACtB,QAAQ,CAAC,MAAM,CAAC,EAAE,MAAM,CAAA;CACzB;AAkFD,eAAO,MAAM,eAAe,EAAE,aAAa,CAAC,UAAU,CAwCrD,CAAA"}
