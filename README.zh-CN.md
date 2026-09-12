@@ -63,7 +63,7 @@ dsh-autofix 只在工具已经失败后工作。它不增加审批弹窗、不�
 
 ## 兼容性
 
-当前版本已经在真实 `@deepseek-ai/dsh-tools` `0.1.0-rc.6` 运行时上验证。Linux/WSL 的 Node.js `24.19.0` 与 Windows 的 Node.js `22.19.0` 均已通过严格类型检查、构建和完整测试。Windows CLI 路径也已通过 WSL 互操作，在隔离的真实 DSH profile 上完成安装、重复安装、生效配置和卸载检查。独立 Windows 客户端运行与原生 macOS 安装仍需发布候选验证。
+当前开发快照在 Windows Node.js `24.11.1` 和真实 `@deepseek-ai/dsh-tools` `0.1.0-rc.8` 运行时上通过全部 55 项测试（2026 年 9 月 12 日）。此前发布版本的 rc.6 兼容性证据单独保留：Linux/WSL 的 Node.js `24.19.0` 与 Windows 的 Node.js `22.19.0` 均已通过严格类型检查、构建和完整测试。Windows CLI 路径也已通过 WSL 互操作，在隔离的真实 DSH profile 上完成安装、重复安装、生效配置和卸载检查。独立 Windows 客户端运行与原生 macOS 安装仍需发布候选验证。
 
 准确证据与限制见[兼容矩阵](docs/COMPATIBILITY.md)。
 

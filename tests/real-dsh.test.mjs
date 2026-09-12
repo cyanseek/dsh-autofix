@@ -73,8 +73,8 @@ function installAutoFix(ctx) {
   return ctx.plugin(plugin)
 }
 
-test('consumer uses the installed real DSH rc.6 ToolRuntime', () => {
-  assert.equal(toolsPackage.version, '0.1.0-rc.6')
+test('consumer uses the installed real DSH rc.8 ToolRuntime', () => {
+  assert.equal(toolsPackage.version, '0.1.0-rc.8')
 })
 
 test('real DSH consumer completes transient failure then success with zero user input', async () => {

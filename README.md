@@ -63,7 +63,7 @@ Unknown failures are preserved unchanged.
 
 ## Compatibility
 
-The current release is verified against the real `@deepseek-ai/dsh-tools` `0.1.0-rc.6` runtime. Node.js `24.19.0` on Linux/WSL and Node.js `22.19.0` on Windows both pass strict typechecking, build, and the full test suite. The Windows CLI path also passed install, repeat-install, effective-config, and uninstall checks against an isolated real DSH profile through WSL interoperability. A standalone Windows client run and native macOS installation still need release-candidate verification.
+The current development snapshot passes all 55 tests against the real `@deepseek-ai/dsh-tools` `0.1.0-rc.8` runtime on Windows with Node.js `24.11.1` (September 12, 2026). The previously released rc.6 compatibility evidence remains separate: Node.js `24.19.0` on Linux/WSL and Node.js `22.19.0` on Windows both pass strict typechecking, build, and the full test suite. The Windows CLI path also passed install, repeat-install, effective-config, and uninstall checks against an isolated real DSH profile through WSL interoperability. A standalone Windows client run and native macOS installation still need release-candidate verification.
 
 See the [compatibility matrix](docs/COMPATIBILITY.md) for exact evidence and limits.
 

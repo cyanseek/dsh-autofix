@@ -4,6 +4,10 @@ All notable changes are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Refresh the development DSH tools, LLM, and system-prompt dependencies to rc.8 and verify the full 55-test Windows consumer suite. Keep earlier rc.6 real-profile evidence explicitly scoped to its tested version.
+
 ## [0.1.0] - 2026-08-16
 
 ### Added

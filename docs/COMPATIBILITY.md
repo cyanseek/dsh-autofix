@@ -13,6 +13,10 @@ This matrix reports evidence produced in the repository; it is not a promise abo
 | Windows | native CLI via WSL interoperability | Verified in isolation | Windows Node.js and `cmd` completed the real DSH profile lifecycle; standalone client boot remains unverified |
 | macOS | native | Fixture only | An explicit Darwin POSIX PATH fixture is covered; native DSH profile install remains unverified |
 
+## Development refresh — September 12, 2026
+
+Windows Node.js `24.11.1`, DSH tools/LLM/system-prompt `0.1.0-rc.8`: `npm run check` passes strict typechecking, build, all 55 unit/CLI/consumer tests, Skill validation, verification, and tarball inspection. The real rc.8 registry exercises result handling, context, nested identity, and composition. This run does not re-establish the historical real-profile or headless evidence above for rc.8; those remain rc.6 results.
+
 ## Recipe coverage
 
 | Recipe | Verified behavior | Current limit |
