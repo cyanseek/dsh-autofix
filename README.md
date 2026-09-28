@@ -1,5 +1,7 @@
 # dsh-autofix
 
+> Development version `0.1.1` (GitHub source; no npm release): tested locally on Windows Node.js 24.11.1 with DSH `0.1.7-rc.2` (2026-09-28). Approval denials and blocked results never trigger recovery; installation uses the running package and verifies upgrades. Model-backed end-to-end and native macOS runs have not been repeated.
+
 [简体中文](README.zh-CN.md)
 
 > Fix common DSH failures automatically and keep the task moving.
@@ -14,7 +16,7 @@ Install it once, then use DeepSeek Harness exactly as before. Supported failures
 ## Install
 
 ```bash
-npx -y dsh-autofix install
+npx -y github:cyanseek/dsh-autofix install
 ```
 
 Done. Use DSH normally.
@@ -63,7 +65,7 @@ Unknown failures are preserved unchanged.
 
 ## Compatibility
 
-The current development snapshot passes all 55 tests against the real `@deepseek-ai/dsh-tools` `0.1.0-rc.8` runtime on Windows with Node.js `24.11.1` (September 12, 2026). The previously released rc.6 compatibility evidence remains separate: Node.js `24.19.0` on Linux/WSL and Node.js `22.19.0` on Windows both pass strict typechecking, build, and the full test suite. The Windows CLI path also passed install, repeat-install, effective-config, and uninstall checks against an isolated real DSH profile through WSL interoperability. A standalone Windows client run and native macOS installation still need release-candidate verification.
+Current candidate: 58 tests pass, including the real DSH ToolRuntime, approval-denial and downstream-block regressions. TypeScript 7.0.2 builds with explicit Node types. Earlier version/platform evidence remains in the compatibility matrix.
 
 See the [compatibility matrix](docs/COMPATIBILITY.md) for exact evidence and limits.
 

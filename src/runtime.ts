@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { boundContextSummary, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { Context } from '@deepseek-ai/cordis'
-import type { PostToolDecision, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import type { PostToolDecision, ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
 import { createCommandProbe } from './engine/command-probe.js'
 import { executionScope, recoveryFingerprint } from './engine/fingerprint.js'
 import { InterventionState } from './engine/state.js'
@@ -17,7 +17,13 @@ import type { Config } from './options.js'
 import { resolveConfig } from './options.js'
 import { createDefaultRecipes } from './recipes/index.js'
 
-const PLUGIN_SOURCE = { kind: 'plugin' as const, plugin: 'dsh-autofix', form: 'notice' as const }
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'dsh-autofix': { kind: 'dsh-autofix'; form: 'notice'; summary: string }
+  }
+}
+
+const PLUGIN_SOURCE = { kind: 'dsh-autofix' as const, form: 'notice' as const }
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -77,6 +83,14 @@ export function applyRuntime(
   const logger = resolved.debug ? ctx.logger('dsh-autofix') : undefined
 
   ctx.effect(() => {
+    // Denials can enter post-execute with arbitrary human-readable feedback.
+    // Only executions that passed the policy gate may receive recovery advice.
+    const dispatched = new Set<ToolExecutionToken>()
+    const disposeDispatch = ctx.on('tools/execute', async (exec, next) => {
+      dispatched.add(exec.token)
+      return next()
+    })
+    const disposeResult = ctx.on('tools/result', (exec) => { dispatched.delete(exec.token) })
     const disposeListener = ctx.on('tools/post-execute', (
       exec: ToolExecution,
       result: Readonly<ToolExecutionResult>,
@@ -89,7 +103,7 @@ export function applyRuntime(
         state.clearScope(executionScope(exec))
         return downstream
       }
-      if (exec.signal.aborted || lifetime.signal.aborted) return next()
+      if (!dispatched.has(exec.token) || exec.signal.aborted || lifetime.signal.aborted) return next()
 
       return (async (): Promise<PostToolDecision> => {
         const signal = AbortSignal.any([exec.signal, lifetime.signal])
@@ -153,6 +167,10 @@ export function applyRuntime(
           state.release(fingerprint.key)
           throw error
         }
+        if (downstream.kind === 'block') {
+          state.release(fingerprint.key)
+          return downstream
+        }
         emitRecovery(Object.freeze({
           version: 1,
           recipeId: selected.recipe.id,
@@ -170,6 +188,9 @@ export function applyRuntime(
       lifetime.abort(new Error('dsh-autofix disposed'))
       state.clear()
       commandProbe.clear()
+      dispatched.clear()
+      disposeDispatch()
+      disposeResult()
       disposeListener()
     }
   }, 'dsh-autofix/runtime')

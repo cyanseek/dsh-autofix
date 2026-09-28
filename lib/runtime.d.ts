@@ -1,6 +1,15 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { AutoFixRecipe } from './engine/types.js';
 import type { Config } from './options.js';
+declare module '@deepseek-ai/dsh-llm' {
+    interface MessageSourceMap {
+        'dsh-autofix': {
+            kind: 'dsh-autofix';
+            form: 'notice';
+            summary: string;
+        };
+    }
+}
 /** Internal/test seam for mounting an explicit ordered recipe list. */
 export declare function applyRuntime(ctx: Context, config?: Config, recipes?: readonly AutoFixRecipe[]): void;
 /** Register one transparent post-result recovery listener. */

@@ -2,8 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { Context } from '@deepseek-ai/cordis'
-import { CodeRuntime } from '@deepseek-ai/dsh-code-runtime'
-import { CallId, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { PtcRuntime } from '@deepseek-ai/dsh-ptc-runtime'
+import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool, RUN_CODE_NAME } from '@deepseek-ai/dsh-tools'
 import { apply, applyRecipes } from '../lib/index.js'
@@ -12,10 +12,14 @@ const require = createRequire(import.meta.url)
 const toolsPackage = require('@deepseek-ai/dsh-tools/package.json')
 const signal = () => new AbortController().signal
 
-class FakeCodeRuntime extends CodeRuntime {
+class FakePtcRuntime extends PtcRuntime {
   language = 'typescript'
   isolation = 'fake'
   behavior = async () => ({ logs: [] })
+
+  resolve(request) {
+    return request
+  }
 
   run(request) {
     return this.behavior(request)
@@ -48,8 +52,8 @@ async function setup({ beforeApply, afterApply } = {}) {
 async function execute(ctx, name, arguments_ = {}, overrides = {}) {
   return ctx.tools.execute({
     signal: signal(),
-    callId: CallId(overrides.callId ?? 'root-call'),
-    ...(overrides.rootCallId === undefined ? {} : { rootCallId: CallId(overrides.rootCallId) }),
+    callId: ToolCallId(overrides.callId ?? 'root-call'),
+    ...(overrides.rootCallId === undefined ? {} : { rootCallId: ToolCallId(overrides.rootCallId) }),
     name,
     arguments: arguments_,
   })
@@ -73,8 +77,8 @@ function installAutoFix(ctx) {
   return ctx.plugin(plugin)
 }
 
-test('consumer uses the installed real DSH rc.8 ToolRuntime', () => {
-  assert.equal(toolsPackage.version, '0.1.0-rc.8')
+test('consumer uses the installed real DSH 0.1.7-rc.2 ToolRuntime', () => {
+  assert.equal(toolsPackage.version, '0.1.7-rc.2')
 })
 
 test('real DSH consumer completes transient failure then success with zero user input', async () => {
@@ -93,15 +97,14 @@ test('real DSH consumer completes transient failure then success with zero user 
   assert.equal(result.isError, true)
   assert.equal(result.error.message, 'HTTP 502 Bad Gateway')
   assert.equal(result.additionalContexts?.length, 1)
-  assert.equal(result.additionalContexts[0].source.kind, 'plugin')
-  assert.equal(result.additionalContexts[0].source.plugin, 'dsh-autofix')
+  assert.equal(result.additionalContexts[0].source.kind, 'dsh-autofix')
   if (result.additionalContexts[0].content[0].text.includes('Retry the same operation once now')) {
     result = await execute(ctx, 'flaky_fetch', { url: 'https://example.test' }, { callId: 'retry-call' })
   } else {
     userInputs += 1
   }
 
-  assert.equal(result.isError, false)
+  assert.equal(result.isError, false, JSON.stringify(result))
   assert.deepEqual(result.value, { status: 200, body: 'done' })
   assert.equal(attempts, 2)
   assert.equal(userInputs, 0)
@@ -152,7 +155,7 @@ test('three real DSH plugin layers run once, preserve FIFO contexts, and emit on
         const downstream = await next()
         const context = createUserMessage({
           content: [{ type: 'text', text: 'downstream context' }],
-          source: { kind: 'plugin', plugin: 'dummy-context' },
+          source: { kind: 'dummy-context', form: 'notice', summary: 'Test context' },
         })
         return { ...downstream, additionalContexts: [context, ...downstream.additionalContexts ?? []] }
       })
@@ -168,7 +171,7 @@ test('three real DSH plugin layers run once, preserve FIFO contexts, and emit on
   assert.equal(postContext, 1)
   assert.equal(resultEvents, 1)
   assert.deepEqual(order, ['outer-enter', 'inner-enter', 'inner-exit', 'outer-exit'])
-  assert.deepEqual(result.additionalContexts.map(item => item.source.plugin), ['dsh-autofix', 'dummy-context'])
+  assert.deepEqual(result.additionalContexts.map(item => item.source.kind), ['dsh-autofix', 'dummy-context'])
 })
 
 test('nested calls receive separate fingerprints without writing recovery text into tool content', async () => {
@@ -188,11 +191,11 @@ test('nested calls receive separate fingerprints without writing recovery text i
   }
 })
 
-test('real Code Mode preserves dispatch adjacency and keeps recovery text out of program results', async () => {
+test('real PTC registry with a synthetic provider preserves dispatch adjacency and keeps recovery text out of program results', async () => {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime, { mode: 'code' })
-  await ctx.plugin(FakeCodeRuntime)
+  await ctx.plugin(ToolRuntime, { mode: 'ptc' })
+  await ctx.plugin(FakePtcRuntime)
   apply(ctx)
 
   let attempts = 0
@@ -202,7 +205,7 @@ test('real Code Mode preserves dispatch adjacency and keeps recovery text out of
       throw new Error('HTTP 503 Service Unavailable')
     }))
   }
-  ctx.codeRuntime.behavior = async (request) => {
+  ctx.ptcRuntime.behavior = async (request) => {
     const functions = request.bindings[0].functions
     await functions.flaky_alpha({ key: 'same' }).catch(() => undefined)
     await functions.flaky_alpha({ key: 'same' }).catch(() => undefined)
@@ -213,25 +216,25 @@ test('real Code Mode preserves dispatch adjacency and keeps recovery text out of
   const { agent, events } = recordingAgent()
   const result = await ctx.tools.execute({
     signal: signal(),
-    callId: CallId('code-root'),
+    callId: ToolCallId('code-root'),
     name: RUN_CODE_NAME,
     arguments: { code: 'program', description: 'Exercise nested AutoFix calls' },
     agent,
   })
 
-  assert.equal(result.isError, false)
+  assert.equal(result.isError, false, JSON.stringify(result))
   assert.equal(attempts, 3)
   assert.equal(result.additionalContexts?.length, 2)
-  assert.deepEqual(result.additionalContexts.map(item => item.source.plugin), ['dsh-autofix', 'dsh-autofix'])
+  assert.deepEqual(result.additionalContexts.map(item => item.source.kind), ['dsh-autofix', 'dsh-autofix'])
   assert.equal(JSON.stringify(result.content).includes('AutoFix'), false)
   assert.deepEqual(events.map(event => event.type), [
-    'tool/code-dispatch-start', 'tool/code-dispatch',
-    'tool/code-dispatch-start', 'tool/code-dispatch',
-    'tool/code-dispatch-start', 'tool/code-dispatch',
+    'tool/ptc-dispatch-start', 'tool/ptc-dispatch',
+    'tool/ptc-dispatch-start', 'tool/ptc-dispatch',
+    'tool/ptc-dispatch-start', 'tool/ptc-dispatch',
   ])
   assert.equal(events.some(event => JSON.stringify(event).includes('AutoFix')), false)
   assert.deepEqual(
-    events.filter(event => event.type === 'tool/code-dispatch').map(event => event.data.name),
+    events.filter(event => event.type === 'tool/ptc-dispatch').map(event => event.data.name),
     ['flaky_alpha', 'flaky_alpha', 'flaky_beta'],
   )
 })
@@ -253,7 +256,7 @@ test('disposing and remounting AutoFix leaves one listener and preserves dummy p
       ...downstream,
       additionalContexts: [createUserMessage({
         content: [{ type: 'text', text: 'dummy context' }],
-        source: { kind: 'plugin', plugin: 'dummy-context' },
+        source: { kind: 'dummy-context', form: 'notice', summary: 'Test context' },
       }), ...downstream.additionalContexts ?? []],
     }
   })
@@ -261,16 +264,16 @@ test('disposing and remounting AutoFix leaves one listener and preserves dummy p
 
   const firstFiber = await installAutoFix(ctx)
   const beforeDispose = await execute(ctx, 'lifecycle_fetch', { request: 1 })
-  assert.deepEqual(beforeDispose.additionalContexts.map(item => item.source.plugin), ['dummy-context', 'dsh-autofix'])
+  assert.deepEqual(beforeDispose.additionalContexts.map(item => item.source.kind), ['dummy-context', 'dsh-autofix'])
 
   await firstFiber.dispose()
   const disposed = await execute(ctx, 'lifecycle_fetch', { request: 2 })
-  assert.deepEqual(disposed.additionalContexts.map(item => item.source.plugin), ['dummy-context'])
+  assert.deepEqual(disposed.additionalContexts.map(item => item.source.kind), ['dummy-context'])
 
   const secondFiber = await installAutoFix(ctx)
   const remounted = await execute(ctx, 'lifecycle_fetch', { request: 3 })
-  assert.deepEqual(remounted.additionalContexts.map(item => item.source.plugin), ['dummy-context', 'dsh-autofix'])
-  assert.equal(remounted.additionalContexts.filter(item => item.source.plugin === 'dsh-autofix').length, 1)
+  assert.deepEqual(remounted.additionalContexts.map(item => item.source.kind), ['dummy-context', 'dsh-autofix'])
+  assert.equal(remounted.additionalContexts.filter(item => item.source.kind === 'dsh-autofix').length, 1)
   assert.equal(wrapperCalls, 3)
   assert.equal(dummyContexts, 3)
   await secondFiber.dispose()
@@ -299,4 +302,25 @@ test('public applyRecipes mounts one ordered custom recovery set', async () => {
   assert.equal(result.additionalContexts?.length, 1)
   assert.match(result.additionalContexts[0].content[0].text, /custom recovery applied/)
   assert.throws(() => applyRecipes(ctx, [higher, higher]), /duplicate AutoFix Recipe id/)
+})
+
+test('approval denial is never turned into an automatic recovery request', async () => {
+  const ctx = await setup()
+  let dispatched = false
+  ctx.on('tools/pre-execute', async () => ({ kind: 'deny', reason: 'Do not retry the HTTP 502 operation without approval' }))
+  ctx.tools.register(tool('denied_fetch', async () => { dispatched = true; return {} }))
+  const result = await execute(ctx, 'denied_fetch')
+  assert.equal(result.isError, true)
+  assert.equal(dispatched, false)
+  assert.equal(result.additionalContexts, undefined, JSON.stringify(result))
+})
+
+test('a downstream policy block discards recovery advice', async () => {
+  const ctx = await setup({ afterApply(runtime) {
+    runtime.on('tools/post-execute', async () => ({ kind: 'block', feedback: [{ type: 'text', text: 'Policy withheld result' }] }))
+  } })
+  ctx.tools.register(tool('blocked_fetch', async () => { throw new Error('HTTP 502') }))
+  const result = await execute(ctx, 'blocked_fetch')
+  assert.equal(result.isError, true)
+  assert.equal(result.additionalContexts, undefined)
 })

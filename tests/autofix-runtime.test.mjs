@@ -4,6 +4,7 @@ import { applyRuntime } from '../lib/runtime.js'
 
 function execution(overrides = {}) {
   return {
+    token: Symbol('execution'),
     callId: 'call-1',
     rootCallId: 'call-1',
     name: 'web_fetch',
@@ -24,15 +25,19 @@ function failure(message, overrides = {}) {
 
 function mount({ fs, recipes, config } = {}) {
   let listener
+  const listeners = new Map()
   const disposers = []
   const debug = []
   const ctx = {
     get(name) { return name === 'fs' ? fs : undefined },
     logger() { return { debug: (...args) => debug.push(args) } },
     on(name, callback) {
-      assert.equal(name, 'tools/post-execute')
-      listener = callback
-      return () => { listener = undefined }
+      listeners.set(name, callback)
+      if (name === 'tools/post-execute') listener = callback
+      return () => {
+        listeners.delete(name)
+        if (name === 'tools/post-execute') listener = undefined
+      }
     },
     effect(setup) {
       const dispose = setup()
@@ -45,7 +50,9 @@ function mount({ fs, recipes, config } = {}) {
     invoke: (exec, result, downstream = { kind: 'accept' }) => {
       if (listener === undefined) throw new Error('listener is not mounted')
       let calls = 0
+      void listeners.get('tools/execute')(exec, async () => result)
       const decision = listener(exec, result, async () => { calls += 1; return downstream })
+        .finally(() => listeners.get('tools/result')?.(exec))
       return { decision, calls: () => calls }
     },
     dispose: () => { for (const dispose of disposers) dispose?.() },

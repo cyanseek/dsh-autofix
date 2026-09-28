@@ -105,6 +105,13 @@ function profileStatus(
   return { profile, installed: verified, verified, changed: false }
 }
 
+function installedVersion(dshHome: string, profile: string): string | undefined {
+  const manifest = join(dshHome, 'profiles', profile, 'node_modules', 'dsh-autofix', 'package.json')
+  if (!existsSync(manifest)) return undefined
+  const value = JSON.parse(readFileSync(manifest, 'utf8')) as { version?: string }
+  return value.version
+}
+
 function packageLoadSmoke(packageRoot: string): boolean {
   const target = resolve(packageRoot, 'lib/index.js')
   if (!existsSync(target)) return false
@@ -149,17 +156,22 @@ export function install(options: OperationOptions): InstallReport {
   if (profiles.length === 0) {
     throw new Error('no existing web or headless profile was found; start the DSH client once, then retry this command')
   }
-  const source = env.DSH_AUTOFIX_SOURCE?.trim() || `dsh-autofix@${options.version}`
+  // Install the artifact actually running this command, including GitHub/tarball
+  // consumers. A matching npm release does not necessarily exist.
+  const source = env.DSH_AUTOFIX_SOURCE?.trim() || `file:${resolve(options.packageRoot)}`
   const statuses: ProfileStatus[] = []
   for (const profile of profiles) {
     const before = profileStatus(command, profile, env)
-    if (before.installed) {
+    if (before.installed && installedVersion(dshHome, profile) === options.version) {
       statuses.push(before)
       continue
     }
     runDsh(command, ['plugin', '--profile', profile, 'add', source], env)
     const after = profileStatus(command, profile, env)
     if (!after.verified) throw new Error(`dsh-autofix was added to ${profile}, but its effective config could not be verified`)
+    if (installedVersion(dshHome, profile) !== options.version) {
+      throw new Error(`dsh-autofix in ${profile} does not match installer version ${options.version}`)
+    }
     statuses.push({ ...after, changed: true })
   }
 

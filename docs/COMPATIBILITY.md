@@ -1,5 +1,10 @@
 # Compatibility
 
+## Current candidate — September 28, 2026
+
+Windows Node.js 24.11.1 and real DSH ToolRuntime 0.1.7-rc.2: 58 tests, strict typecheck, build, Skill validation, CLI verification and package inspection pass. TypeScript 7.0.2 uses explicit Node 22 types. PTC tests use a synthetic execution provider with the real registry; they do not represent a live model run. New Linux/macOS and model-backed end-to-end validation remains pending. Isolated real DSH 0.1.7-rc.2 profile installation, effective-config inspection, and removal also pass. AutoFix additionally passes repeat-install with no changes and verifies the installed version. All older rows below are historical evidence.
+
+
 This matrix reports evidence produced in the repository; it is not a promise about untested combinations.
 
 | Surface | Version or platform | Status | Evidence / limit |
@@ -29,8 +34,8 @@ Windows Node.js `24.11.1`, DSH tools/LLM/system-prompt `0.1.0-rc.8`: `npm run ch
 ## Package contract
 
 - Node.js: `^22.19.0 || >=24.0.0`
-- Cordis: `>=4.0.1-rc.1 <5`
-- DSH LLM and Tools: `>=0.1.0-rc.5 <0.2.0`
-- Schemastery: `>=3.18.0 <4`
+- Cordis: `~4.0.4`
+- DSH LLM and Tools: `0.1.7-rc.2`
+- Schemastery: `~3.18.4`
 
 Open a compatibility report with exact DSH, Node.js, package-manager and OS versions when validating another combination.

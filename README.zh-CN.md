@@ -1,5 +1,7 @@
 # dsh-autofix
 
+> 开发版本 `0.1.1`（GitHub 源码版，未发布 npm 包）：2026-09-28 在 Windows Node.js 24.11.1、DSH `0.1.7-rc.2` 上完成本地验证。审批拒绝和后置策略阻止不会触发恢复；安装使用当前执行包并校验升级版本。 本轮未重跑真实模型端到端及原生 macOS 验证。
+
 [English](README.md)
 
 > DSH 报错后别停：自动重试、自动刷新、自动换路，任务继续跑。
@@ -14,7 +16,7 @@
 ## 安装
 
 ```bash
-npx -y dsh-autofix install
+npx -y github:cyanseek/dsh-autofix install
 ```
 
 完成。之后正常使用 DSH。
@@ -63,7 +65,7 @@ dsh-autofix 只在工具已经失败后工作。它不增加审批弹窗、不�
 
 ## 兼容性
 
-当前开发快照在 Windows Node.js `24.11.1` 和真实 `@deepseek-ai/dsh-tools` `0.1.0-rc.8` 运行时上通过全部 55 项测试（2026 年 9 月 12 日）。此前发布版本的 rc.6 兼容性证据单独保留：Linux/WSL 的 Node.js `24.19.0` 与 Windows 的 Node.js `22.19.0` 均已通过严格类型检查、构建和完整测试。Windows CLI 路径也已通过 WSL 互操作，在隔离的真实 DSH profile 上完成安装、重复安装、生效配置和卸载检查。独立 Windows 客户端运行与原生 macOS 安装仍需发布候选验证。
+当前候选版本通过 58 项测试，包含真实 DSH ToolRuntime、审批拒绝和后置策略阻止回归；TypeScript 7.0.2 使用显式 Node 类型配置完成构建。历史版本和平台证据单独保留在兼容矩阵。
 
 准确证据与限制见[兼容矩阵](docs/COMPATIBILITY.md)。
 

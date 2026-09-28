@@ -15,6 +15,7 @@ function run(args, env = {}) {
 }
 
 function fixture(profiles = ['web', 'headless']) {
+  const version = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version
   const root = mkdtempSync(join(tmpdir(), 'dsh-autofix-cli-'))
   const dshHome = join(root, 'dsh-home')
   const agentsHome = join(root, 'agents-home')
@@ -34,7 +35,12 @@ const profile = profileIndex >= 0 ? args[profileIndex + 1] : undefined
 const marker = profile ? join(process.env.DSH_HOME, 'profiles', profile, '.autofix-installed') : undefined
 if (args[0] === 'plugin') {
   const action = args[3]
-  if (action === 'add') writeFileSync(marker, args[4], 'utf8')
+  if (action === 'add') {
+    writeFileSync(marker, args[4], 'utf8')
+    const manifest = join(process.env.DSH_HOME, 'profiles', profile, 'node_modules', 'dsh-autofix', 'package.json')
+    mkdirSync(dirname(manifest), { recursive: true })
+    writeFileSync(manifest, JSON.stringify({ version: '${version}' }))
+  }
   else if (action === 'remove') rmSync(marker, { force: true })
   process.exit(0)
 }
@@ -161,4 +167,18 @@ test('all bundled deterministic scenarios execute from the prebuilt package', ()
     assert.equal(report.passed, true)
     assert.equal(report.scenario, scenario)
   }
+})
+
+test('install upgrades an older active artifact and defaults to the running package', () => {
+  const f = fixture(['web'])
+  const env = { ...f.env, DSH_AUTOFIX_SOURCE: '' }
+  assert.equal(run(['install', '--json'], env).status, 0)
+  const manifest = join(f.dshHome, 'profiles', 'web', 'node_modules', 'dsh-autofix', 'package.json')
+  writeFileSync(manifest, JSON.stringify({ version: '0.1.0' }))
+  const update = run(['install', '--json'], env)
+  assert.equal(update.status, 0, update.stderr)
+  const report = JSON.parse(update.stdout)
+  assert.equal(report.changed, true)
+  assert.equal(report.source, `file:${resolve('.')}`)
+  assert.equal(calls(f).filter(args => args[0] === 'plugin' && args[3] === 'add').length, 2)
 })

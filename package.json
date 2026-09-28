@@ -1,6 +1,6 @@
 {
   "name": "dsh-autofix",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Automatic recovery for common DeepSeek Harness tool errors — zero prompts, zero config.",
   "author": "cyanseek",
   "repository": {
@@ -82,19 +82,20 @@
     "prepack": "npm run build && npm run validate:skill && npm run verify"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.1-rc.1 <5",
-    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.5 <0.2.0",
-    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.5 <0.2.0",
-    "@deepseek-ai/schemastery": ">=3.18.0 <4"
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
+    "@deepseek-ai/schemastery": "~3.18.4"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.8",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.8",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.8",
-    "@deepseek-ai/schemastery": "^3.18.1",
-    "@types/node": "^22.20.1",
-    "typescript": "^5.8.3"
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-llm": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-ptc-runtime": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@types/node": "22.20.2",
+    "typescript": "7.0.2"
   },
   "dsh": {
     "bundle": {

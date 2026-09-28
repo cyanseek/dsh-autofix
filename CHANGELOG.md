@@ -4,6 +4,12 @@ All notable changes are documented here.
 
 ## [Unreleased]
 
+### 0.1.1 candidate — 2026-09-28
+
+- Target DSH 0.1.7-rc.2; prior compatibility evidence remains historical.
+- Approval denials and blocked results never trigger recovery; installation uses the running package and verifies upgrades.
+
+
 ### Changed
 
 - Refresh the development DSH tools, LLM, and system-prompt dependencies to rc.8 and verify the full 55-test Windows consumer suite. Keep earlier rc.6 real-profile evidence explicitly scoped to its tested version.

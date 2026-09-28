@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 
-const read = path => readFileSync(path, 'utf8')
+const read = path => readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
 
 test('package identity, exports, bundle and install lifecycle match dsh-autofix', () => {
   const manifest = JSON.parse(read('package.json'))
@@ -22,7 +22,7 @@ test('English README is result-first and has one ordinary-user install command',
   assert.match(text, /> Fix common DSH failures automatically and keep the task moving\./)
   const install = /## Install\n([\s\S]*?)\n## /.exec(text)?.[1]
   assert.ok(install)
-  assert.deepEqual(install.match(/npx -y dsh-autofix install/g), ['npx -y dsh-autofix install'])
+  assert.deepEqual(install.match(/npx -y github:cyanseek\/dsh-autofix install/g), ['npx -y github:cyanseek/dsh-autofix install'])
   const headings = ['## Install', '## Before and after', '## Recovery recipes', '## Zero-interruption contract', '## Compatibility', '## Advanced Test Kit', '## Development and contributing', '## License']
   assert.deepEqual(headings.map(heading => text.indexOf(heading)), headings.map(heading => text.indexOf(heading)).slice().sort((a, b) => a - b))
   for (const demo of ['A web tool returns 502', 'A file changes during an edit', 'A command differs across platforms']) assert.match(text, new RegExp(demo))
@@ -33,7 +33,7 @@ test('Chinese README mirrors the public information architecture', () => {
   assert.match(text, /^# dsh-autofix\n/)
   assert.match(text, /> DSH 报错后别停：自动重试、自动刷新、自动换路，任务继续跑。/)
   const install = /## 安装\n([\s\S]*?)\n## /.exec(text)?.[1]
-  assert.deepEqual(install.match(/npx -y dsh-autofix install/g), ['npx -y dsh-autofix install'])
+  assert.deepEqual(install.match(/npx -y github:cyanseek\/dsh-autofix install/g), ['npx -y github:cyanseek/dsh-autofix install'])
   const headings = ['## 安装', '## 使用前后', '## 恢复 Recipe', '## 零打断契约', '## 兼容性', '## 高级 Test Kit', '## 开发与贡献', '## 许可证']
   assert.deepEqual(headings.map(heading => text.indexOf(heading)), headings.map(heading => text.indexOf(heading)).slice().sort((a, b) => a - b))
   assert.equal((read('README.md').match(/^## /gm) ?? []).length, (text.match(/^## /gm) ?? []).length)
